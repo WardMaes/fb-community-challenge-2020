@@ -1,10 +1,12 @@
 import Head from 'next/head'
 import { useEffect, useRef, useState } from 'react'
 
+import QuickReply from '../components/QuickReply'
 export default function Home() {
   const [searchTerm, setSearchTerm] = useState('')
   const [intent, setIntent] = useState('')
   const [events, setEvents] = useState([])
+  const [quickReplies, setQuickReplies] = useState([])
   const [answer, setAnswer] = useState()
   const makingCall = useRef(false)
   const inputRef = React.useRef()
@@ -55,12 +57,36 @@ export default function Home() {
     if (!intent || !intent.name) {
       return
     }
-    // TODO: replace with 'handleIntent' function
-    if (intent.name === 'calendar_next') {
-      setAnswer(getNextEvent(events))
-      setIntent('')
-    }
+    handleIntent(intent)
   }, [intent])
+
+  function handleIntent(intent) {
+    switch (intent.name) {
+      case 'calendar_next':
+        // setAnswer(getNextEvent(events))
+        setIntent('')
+        setQuickReplies([{title: 'Next calendar item', onClick: () => setAnswer(getNextEvent(events))}])
+        break
+      case 'calendar_previous':
+        setAnswer(getPreviousEvent(events))
+        setIntent('')
+        break
+      case 'calendar_new':
+        setAnswer('new calendar event')
+        setIntent('')
+        break
+      default:
+        setAnswer(intent)
+        break
+    }
+  }
+
+  function getPreviousEvent(events = []) {
+    const now = new Date()
+    return events
+      .filter((e) => e.startTime <= now.toJSON())
+      .sort((a, b) => a.startTime - b.startTime)[0]
+  }
 
   function getNextEvent(events = []) {
     const now = new Date()
@@ -76,9 +102,19 @@ export default function Home() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <>
-        <main>
-          <form className="w-full max-w-sm">
-            <div className="flex items-center border-b border-teal-500 py-2">
+        <main className="max-w-sm mx-auto">
+          <div>
+            <pre>{JSON.stringify(answer, null, 2)}</pre>
+            <pre>{JSON.stringify(current.context, null, 2)}</pre>
+            <pre>{JSON.stringify(current.value, null, 2)}</pre>
+          </div>
+
+          <div>
+            {quickReplies.map(qr => <QuickReply {...qr} />)}
+          </div>
+
+          <form className="min-w-full absolute bottom-0 right-0 left-0 m-4">
+            <div className="flex items-center border-b border-teal-500 py-2 max-w-sm mx-auto">
               <input
                 className="appearance-none bg-transparent border-none w-full text-gray-700 mr-3 py-1 px-2 leading-tight focus:outline-none"
                 type="text"
@@ -97,10 +133,6 @@ export default function Home() {
               </button>
             </div>
           </form>
-
-          <div>
-            <pre>{JSON.stringify(answer, null, 2)}</pre>
-          </div>
         </main>
       </>
     </div>
