@@ -1,82 +1,68 @@
 import Head from 'next/head'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useMachine } from '@xstate/react'
+
+import { intentMachine } from '../machines/intent'
 
 import QuickReply from '../components/QuickReply'
+
 export default function Home() {
-  const [searchTerm, setSearchTerm] = useState('')
-  const [intent, setIntent] = useState('')
+  const [current, send] = useMachine(intentMachine)
+  const { intent } = current.context
+
   const [events, setEvents] = useState([])
   const [quickReplies, setQuickReplies] = useState([])
   const [answer, setAnswer] = useState()
-  const makingCall = useRef(false)
   const inputRef = React.useRef()
 
-  const handleInput = (e) => {
-    setSearchTerm(e.target.value)
-  }
-
-  function wait() {
-    return new Promise((resolve) => {
-      setTimeout(resolve, 300)
-    })
-  }
-
   function clear() {
-    setSearchTerm('')
-    setIntent('')
-    setAnswer('')
+    console.log('TODO: send RESET event')
   }
 
   async function getEvents() {
     const response = await fetch('/api/events')
     const events = await response.json()
     setEvents(events)
-    console.log('events', events)
   }
 
   useEffect(() => {
     getEvents()
   }, [])
 
-  // Throttle API calls
   useEffect(() => {
-    if (!searchTerm.trim() || makingCall.current) return
-    makingCall.current = true
-    setTimeout(() => {
-      makingCall.current = false
-      wait().then(() => {
-        console.log('Calling wit.ai API with', inputRef.current.value)
-        fetch('/api/intents?utterance=' + inputRef.current.value).then((res) =>
-          res.json().then((response) => setIntent(response.intents[0]))
-        )
-      })
-    }, 500)
-  }, [searchTerm])
-
-  useEffect(() => {
-    if (!intent || !intent.name) {
+    if (!intent || !intent.data) {
       return
     }
-    handleIntent(intent)
+    handleIntent(intent.data)
   }, [intent])
 
   function handleIntent(intent) {
     switch (intent.name) {
       case 'calendar_next':
-        // setAnswer(getNextEvent(events))
-        setIntent('')
-        setQuickReplies([{title: 'Next calendar item', onClick: () => setAnswer(getNextEvent(events))}])
+        setQuickReplies([
+          {
+            title: 'Next calendar item',
+            onClick: () => setAnswer(getNextEvent(events)),
+          },
+        ])
         break
       case 'calendar_previous':
-        setAnswer(getPreviousEvent(events))
-        setIntent('')
+        setQuickReplies([
+          {
+            title: 'Previous calendar item',
+            onClick: () => setAnswer(getPreviousEvent(events)),
+          },
+        ])
         break
       case 'calendar_new':
-        setAnswer('new calendar event')
-        setIntent('')
+        setQuickReplies([
+          {
+            title: 'Create new event',
+            onClick: () => console.log('TODO: create new event'),
+          },
+        ])
         break
       default:
-        setAnswer(intent)
         break
     }
   }
@@ -104,13 +90,19 @@ export default function Home() {
       <>
         <main className="max-w-sm mx-auto">
           <div>
-            <pre>{JSON.stringify(answer, null, 2)}</pre>
-            <pre>{JSON.stringify(current.context, null, 2)}</pre>
-            <pre>{JSON.stringify(current.value, null, 2)}</pre>
+            <pre>State: {JSON.stringify(current.value, null, 2)}</pre>
+            <pre>Context: {JSON.stringify(current.context, null, 2)}</pre>
+            <pre>Answer: {JSON.stringify(answer, null, 2)}</pre>
           </div>
 
+          {current.value === 'error' && (
+            <p>Error: {JSON.stringify(current.context.error, null, 2)}</p>
+          )}
+
           <div>
-            {quickReplies.map(qr => <QuickReply {...qr} />)}
+            {quickReplies.map((qr, i) => (
+              <QuickReply {...qr} index={i} />
+            ))}
           </div>
 
           <form className="min-w-full absolute bottom-0 right-0 left-0 m-4">
@@ -120,8 +112,9 @@ export default function Home() {
                 type="text"
                 placeholder="e.g. When is my next meeting?"
                 aria-label="Search input"
-                value={searchTerm}
-                onChange={handleInput}
+                onChange={(e) =>
+                  send('SET_UTTERANCE', { utterance: e.target.value })
+                }
                 ref={inputRef}
               />
               <button
