@@ -102,7 +102,7 @@ export const intentMachine = Machine(
           },
           onError: {
             target: 'error',
-            actions: assign({ error: (_, event) => event }),
+            actions: 'setError',
           },
         },
       },
@@ -116,28 +116,21 @@ export const intentMachine = Machine(
           },
           onError: {
             target: 'error',
-            actions: assign({ error: (_, event) => event }),
+            actions: 'setError',
           },
         },
       },
       loaded: {
-        entry: assign({
-          quickReplies: (_, event) => getQuickReplies(event),
-        }),
+        entry: 'getQuickReplies',
         on: {
           SHOW_NEXT: {
-            actions: assign({
-              calenderItem: (context, event) => getNextEvent(context.events),
-            }),
+            actions: ['getNextEvent', 'resetQuickReplies'],
           },
           SHOW_PREVIOUS: {
-            actions: assign({
-              calenderItem: (context, event) =>
-                getPreviousEvent(context.events),
-            }),
+            actions: ['getPreviousEvent', 'resetQuickReplies'],
           },
           SHOW_NEW: {
-            actions: console.log('SHOW_NEW'),
+            actions: console.log('TODO: SHOW_NEW'),
           },
         },
       },
@@ -151,11 +144,14 @@ export const intentMachine = Machine(
       RESET: {
         target: 'idle',
         actions: 'reset',
-      }
+      },
     },
   },
   {
     actions: {
+      getQuickReplies: assign({
+        quickReplies: (_, event) => getQuickReplies(event),
+      }),
       setEvents: assign({
         events: (_, event) => event.data,
       }),
@@ -168,7 +164,17 @@ export const intentMachine = Machine(
       clearError: assign({
         error: null,
       }),
-      reset: assign(initialContext)
+      reset: assign(initialContext),
+      getNextEvent: assign({
+        calenderItem: (context, event) => getNextEvent(context.events),
+      }),
+      getPreviousEvent: assign({
+        calenderItem: (context, event) => getPreviousEvent(context.events),
+      }),
+      setError: assign({ error: (_, event) => event }),
+      resetQuickReplies: assign({
+        quickReplies: []
+      })
     },
   }
 )
