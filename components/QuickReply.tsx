@@ -1,15 +1,15 @@
 import React from 'react'
 
-const QuickReply = ({ title, onClick }) => {
+type QuickReplyProps = {
+  title: string
+  onClick: () => void
+}
+
+const QuickReply = ({ title, onClick } : QuickReplyProps) => {
   return (
-    <div>
-      <button
-        onClick={onClick}
-        className="btn"
-      >
-        {title}
-      </button>
-    </div>
+    <button onClick={onClick} className="btn w-full">
+      {title}
+    </button>
   )
 }
 
