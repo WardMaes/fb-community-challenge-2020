@@ -1,6 +1,16 @@
 import { Machine, assign } from 'xstate'
+import { v4 as uuidv4 } from 'uuid'
 
-function invokeFetchIntent(context, event) {
+const initialContext = {
+  utterance: null,
+  intent: null,
+  error: null,
+  quickReplies: [],
+  events: [],
+  calenderItem: null,
+}
+
+function invokeFetchIntent(context) {
   const { utterance } = context
   return fetch('/api/intents?utterance=' + utterance).then((res) =>
     res.json().then((response) => {
@@ -13,17 +23,89 @@ function invokeFetchIntent(context, event) {
   )
 }
 
+async function invokeFetchEvents() {
+  const response = await fetch('/api/events')
+  const events = await response.json()
+  return events
+}
+
+function getPreviousEvent(events = []) {
+  const now = new Date()
+  return events
+    .filter((e) => e.startTime <= now.toJSON())
+    .sort((a, b) => a.startTime - b.startTime)[0]
+}
+
+function getNextEvent(events = []) {
+  const now = new Date()
+  return events
+    .filter((e) => e.startTime >= now.toJSON())
+    .sort((a, b) => b.startTime - a.startTime)[0]
+}
+
+function getQuickReplies(event) {
+  const {
+    data: { name },
+  } = event
+  switch (name) {
+    case 'calendar_next':
+      return [
+        {
+          id: uuidv4(),
+          title: 'Next calendar item',
+          event: 'SHOW_NEXT',
+        },
+      ]
+    case 'calendar_previous':
+      return [
+        {
+          id: uuidv4(),
+          title: 'Did I miss anything?',
+          event: 'SHOW_PREVIOUS',
+        },
+        {
+          id: uuidv4(),
+          title: 'What was my previous appointment?',
+          event: 'SHOW_PREVIOUS',
+        },
+        {
+          id: uuidv4(),
+          title: 'Did I have a meeting?',
+          event: 'SHOW_PREVIOUS',
+        },
+      ]
+    case 'calendar_new':
+      return [
+        {
+          id: uuidv4(),
+          title: 'Create new event',
+          event: 'SHOW_NEW',
+        },
+      ]
+    default:
+      break
+  }
+}
+
 export const intentMachine = Machine(
   {
     id: 'intent',
     initial: 'idle',
-    context: {
-      utterance: null,
-      intent: null,
-      error: null,
-    },
+    context: initialContext,
     states: {
-      idle: {},
+      idle: {
+        invoke: {
+          id: 'fetch-events',
+          src: invokeFetchEvents,
+          onDone: {
+            actions: 'setEvents',
+          },
+          onError: {
+            target: 'error',
+            actions: assign({ error: (_, event) => event }),
+          },
+        },
+      },
       loading: {
         invoke: {
           id: 'fetch-intent',
@@ -34,11 +116,31 @@ export const intentMachine = Machine(
           },
           onError: {
             target: 'error',
-            actions: assign({ error: (context, event) => event }),
+            actions: assign({ error: (_, event) => event }),
           },
         },
       },
-      loaded: {},
+      loaded: {
+        entry: assign({
+          quickReplies: (_, event) => getQuickReplies(event),
+        }),
+        on: {
+          SHOW_NEXT: {
+            actions: assign({
+              calenderItem: (context, event) => getNextEvent(context.events),
+            }),
+          },
+          SHOW_PREVIOUS: {
+            actions: assign({
+              calenderItem: (context, event) =>
+                getPreviousEvent(context.events),
+            }),
+          },
+          SHOW_NEW: {
+            actions: console.log('SHOW_NEW'),
+          },
+        },
+      },
       error: {},
     },
     on: {
@@ -46,16 +148,27 @@ export const intentMachine = Machine(
         target: '.loading',
         actions: 'setUtterance',
       },
+      RESET: {
+        target: 'idle',
+        actions: 'reset',
+      }
     },
   },
   {
     actions: {
+      setEvents: assign({
+        events: (_, event) => event.data,
+      }),
       setUtterance: assign({
-        utterance: (context, event) => event.utterance,
+        utterance: (_, event) => event.utterance,
       }),
       setIntent: assign({
-        intent: (context, event) => event,
+        intent: (_, event) => event,
       }),
+      clearError: assign({
+        error: null,
+      }),
+      reset: assign(initialContext)
     },
   }
 )
