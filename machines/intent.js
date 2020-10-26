@@ -7,7 +7,7 @@ const initialContext = {
   error: null,
   quickReplies: [],
   events: [],
-  calenderItem: null,
+  calendarItem: null,
 }
 
 function invokeFetchIntent(context) {
@@ -166,10 +166,10 @@ export const intentMachine = Machine(
       }),
       reset: assign(initialContext),
       getNextEvent: assign({
-        calenderItem: (context, event) => getNextEvent(context.events),
+        calendarItem: (context) => getNextEvent(context.events),
       }),
       getPreviousEvent: assign({
-        calenderItem: (context, event) => getPreviousEvent(context.events),
+        calendarItem: (context) => getPreviousEvent(context.events),
       }),
       setError: assign({ error: (_, event) => event }),
       resetQuickReplies: assign({

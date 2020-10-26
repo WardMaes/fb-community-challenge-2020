@@ -1,7 +1,7 @@
 const mockEvents = [
   {
     id: '1',
-    name: 'Meeting in the past with client X',
+    name: 'Meeting in the past with John Doe',
     type: 'meeting',
     location: undefined,
     startTime: hoursOffset(-1),
@@ -9,7 +9,7 @@ const mockEvents = [
   },
   {
     id: '2',
-    name: 'Meeting in the future with client Z',
+    name: 'Meeting in the future with Jane Doe',
     type: 'meeting',
     location: undefined,
     startTime: hoursOffset(1),

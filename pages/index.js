@@ -5,10 +5,11 @@ import { useMachine } from '@xstate/react'
 import { intentMachine } from '../machines/intent'
 
 import QuickReply from '../components/QuickReply'
+import CalendarItem from '../components/CalendarItem'
 
 export default function Home() {
   const [current, send] = useMachine(intentMachine)
-  const { intent, quickReplies, events, calenderItem, error } = current.context
+  const { intent, quickReplies, events, calendarItem, error } = current.context
   const inputRef = useRef(null)
 
   function clear() {
@@ -32,9 +33,9 @@ export default function Home() {
 
             {current.matches('loaded') && (
               <>
-                <pre className="flex-1">
-                  {JSON.stringify(calenderItem, null, 2)}
-                </pre>
+                <div className="flex-1">
+                  <CalendarItem item={calendarItem} />
+                </div>
                 <div className="grid grid-cols-2 auto-rows-fr gap-2">
                   {quickReplies.map((qr, i) => (
                     <div key={qr.id} className="flex justify-center">
